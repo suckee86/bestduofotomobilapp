@@ -165,6 +165,10 @@ String friendlyAuthError(Object error) {
 
   if (error is FirebaseAuthException) {
     switch (error.code) {
+      case 'canceled':
+      case 'popup_closed_by_user':
+      case 'web-context-cancelled':
+        return 'A bejelentkezés megszakadt.';
       case 'account-exists-with-different-credential':
         return 'Ehhez az e-mail-címhez már másik belépési mód tartozik.';
       case 'network-request-failed':
@@ -178,6 +182,11 @@ String friendlyAuthError(Object error) {
       default:
         return 'A belépés most nem sikerült. Próbáld újra.';
     }
+  }
+
+  final errorText = error.toString().toLowerCase();
+  if (errorText.contains('canceled') || errorText.contains('cancelled')) {
+    return 'A bejelentkezés megszakadt.';
   }
 
   return 'Váratlan hiba történt. Próbáld újra később.';

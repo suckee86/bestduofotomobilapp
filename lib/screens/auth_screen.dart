@@ -160,6 +160,7 @@ class _AuthScreenState extends State<AuthScreen>
                             child: _LoginActions(
                               loading: _loading,
                               error: _error,
+                              appleFirst: Platform.isIOS,
                               onGoogle: () => _authenticate(
                                 () async =>
                                     AuthService.instance.signInWithGoogle(),
@@ -239,15 +240,65 @@ class _LoginActions extends StatelessWidget {
     required this.error,
     required this.onGoogle,
     required this.onApple,
+    this.appleFirst = false,
   });
 
   final bool loading;
   final String? error;
   final VoidCallback onGoogle;
   final VoidCallback? onApple;
+  final bool appleFirst;
 
   @override
   Widget build(BuildContext context) {
+    final googleButton = SizedBox(
+      width: double.infinity,
+      child: FilledButton.icon(
+        onPressed: loading ? null : onGoogle,
+        icon: const _GoogleMark(),
+        label: const Text('Belépés Google-fiókkal'),
+        style: FilledButton.styleFrom(
+          foregroundColor: const Color(0xFF1F1F1F),
+          backgroundColor: Colors.white,
+          disabledBackgroundColor: Colors.white70,
+          minimumSize: const Size.fromHeight(58),
+          elevation: 0,
+          side: const BorderSide(color: Color(0xFF747775)),
+        ),
+      ),
+    );
+
+    final appleButton = onApple == null
+        ? null
+        : SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: loading ? null : onApple,
+              icon: const Icon(Icons.apple_rounded, size: 24),
+              label: const Text('Bejelentkezés az Apple-lel'),
+              style: FilledButton.styleFrom(
+                foregroundColor: Colors.white,
+                backgroundColor: Colors.black,
+                disabledBackgroundColor: Colors.black54,
+                minimumSize: const Size.fromHeight(58),
+                side: const BorderSide(color: Colors.white38),
+              ),
+            ),
+          );
+
+    final loginButtons = <Widget>[];
+    if (appleFirst && appleButton != null) {
+      loginButtons.add(appleButton);
+      loginButtons.add(const SizedBox(height: 11));
+      loginButtons.add(googleButton);
+    } else {
+      loginButtons.add(googleButton);
+      if (appleButton != null) {
+        loginButtons.add(const SizedBox(height: 11));
+        loginButtons.add(appleButton);
+      }
+    }
+
     return SizedBox(
       width: double.infinity,
       child: Column(
@@ -272,38 +323,7 @@ class _LoginActions extends StatelessWidget {
             ),
             const SizedBox(height: 12),
           ],
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: loading ? null : onGoogle,
-              icon: const _GoogleMark(),
-              label: const Text('Belépés Google-fiókkal'),
-              style: FilledButton.styleFrom(
-                foregroundColor: const Color(0xFF1F1F1F),
-                backgroundColor: Colors.white,
-                disabledBackgroundColor: Colors.white70,
-                minimumSize: const Size.fromHeight(58),
-                elevation: 0,
-                side: const BorderSide(color: Color(0xFF747775)),
-              ),
-            ),
-          ),
-          if (onApple != null) ...[
-            const SizedBox(height: 11),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: loading ? null : onApple,
-                icon: const Icon(Icons.apple_rounded, size: 24),
-                label: const Text('Belépés Apple-fiókkal'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  minimumSize: const Size.fromHeight(58),
-                  side: const BorderSide(color: Colors.white38),
-                ),
-              ),
-            ),
-          ],
+          ...loginButtons,
           if (loading) ...[
             const SizedBox(height: 16),
             const LinearProgressIndicator(

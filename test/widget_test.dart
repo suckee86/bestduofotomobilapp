@@ -45,6 +45,11 @@ void main() {
     expect(friendlyAuthError(error), 'Hiányzó OAuth-beállítás.');
   });
 
+  test('az Apple bejelentkezés megszakítása felhasználóbarát üzenetet ad', () {
+    final error = FirebaseAuthException(code: 'canceled');
+    expect(friendlyAuthError(error), 'A bejelentkezés megszakadt.');
+  });
+
   test('a Firebase-kijelentkezés nem vár a Google takarítására', () async {
     final events = <String>[];
     final googleCleanup = Completer<void>();
