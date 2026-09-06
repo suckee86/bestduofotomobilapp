@@ -1,0 +1,101 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function owns(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function isContentAdmin() {
+      return signedIn()
+        && request.auth.token.email == 'bestduo.firebase@gmail.com'
+        && request.auth.token.email_verified == true;
+    }
+
+    function validAnnouncement(data) {
+      return data.title is string
+        && data.title.size() > 0
+        && data.title.size() <= 160
+        && data.body is string
+        && data.body.size() > 0
+        && data.body.size() <= 3000
+        && data.publishedAt is timestamp
+        && data.isPublished is bool
+        && (!('targetUrl' in data)
+          || (data.targetUrl is string && data.targetUrl.size() <= 2000))
+        && (!('imageUrl' in data)
+          || (data.imageUrl is string && data.imageUrl.size() <= 2000))
+        && (!('imagePath' in data)
+          || (data.imagePath is string && data.imagePath.size() <= 500));
+    }
+
+    function validContact(data) {
+      return data.headline is string && data.headline.size() <= 160
+        && data.subtitle is string && data.subtitle.size() <= 500
+        && data.address is string && data.address.size() <= 500
+        && data.mapDestination is string && data.mapDestination.size() <= 500
+        && data.latitude is number
+        && data.latitude >= -90 && data.latitude <= 90
+        && data.longitude is number
+        && data.longitude >= -180 && data.longitude <= 180
+        && data.phone is string && data.phone.size() <= 100
+        && data.email is string && data.email.size() <= 320
+        && data.openingHours is string && data.openingHours.size() <= 1000
+        && data.facebookUrl is string && data.facebookUrl.size() <= 2000;
+    }
+
+    match /users/{userId} {
+      allow create, read, update, delete: if owns(userId);
+    }
+
+    match /pushTokens/{tokenId} {
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid;
+      allow read, delete: if signedIn()
+        && resource.data.userId == request.auth.uid;
+      allow update: if signedIn()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == request.auth.uid;
+    }
+
+    match /announcements/{announcementId} {
+      allow read: if isContentAdmin()
+        || (signedIn() && resource.data.isPublished == true);
+      allow create: if isContentAdmin()
+        && request.resource.data.keys().hasOnly([
+          'title', 'body', 'publishedAt', 'isPublished', 'imageUrl',
+          'imagePath', 'targetUrl', 'createdAt', 'updatedAt'
+        ])
+        && validAnnouncement(request.resource.data);
+      allow update: if isContentAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'title', 'body', 'publishedAt', 'isPublished', 'imageUrl',
+          'imagePath', 'targetUrl', 'updatedAt'
+        ])
+        && validAnnouncement(request.resource.data);
+      allow delete: if isContentAdmin();
+    }
+
+    match /appConfig/contact {
+      allow read: if signedIn();
+      allow create: if isContentAdmin()
+        && request.resource.data.keys().hasOnly([
+          'headline', 'subtitle', 'address', 'mapDestination', 'latitude',
+          'longitude', 'phone', 'email', 'openingHours', 'facebookUrl',
+          'updatedAt', 'updatedBy'
+        ])
+        && validContact(request.resource.data);
+      allow update: if isContentAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'headline', 'subtitle', 'address', 'mapDestination', 'latitude',
+          'longitude', 'phone', 'email', 'openingHours', 'facebookUrl',
+          'updatedAt', 'updatedBy'
+        ])
+        && validContact(request.resource.data);
+    }
+  }
+}

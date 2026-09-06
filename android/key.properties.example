@@ -1,0 +1,4 @@
+storePassword=CSERELD_EROS_JELSZORA
+keyPassword=CSERELD_EROS_JELSZORA
+keyAlias=upload
+storeFile=C:/biztonsagos/helyen/bestduo-upload.jks
