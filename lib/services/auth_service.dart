@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -46,12 +48,10 @@ class AuthService {
 
   Future<void> ensureProfile(User user) => _saveProfile(user);
 
-  Future<void> signOut() async {
-    await Future.wait([
-      _auth.signOut(),
-      if (_initialized) _googleSignIn.signOut(),
-    ]);
-  }
+  Future<void> signOut() => signOutSessions(
+    firebaseSignOut: _auth.signOut,
+    googleSignOut: _initialized ? _googleSignIn.signOut : null,
+  );
 
   Future<void> deleteAccount() async {
     final user = _auth.currentUser;
@@ -114,6 +114,28 @@ class AuthService {
       // létrehozva vagy a szabályok telepítése folyamatban van.
       debugPrint('A Firebase profil mentése sikertelen: $error');
     }
+  }
+}
+
+@visibleForTesting
+Future<void> signOutSessions({
+  required Future<void> Function() firebaseSignOut,
+  Future<void> Function()? googleSignOut,
+}) async {
+  // A felületet a Firebase authStateChanges streamje vezérli, ezért ezt a
+  // munkamenetet zárjuk le először. A Google helyi munkamenetének esetleges
+  // hibája nem tarthatja bejelentkezve a felhasználót az alkalmazásban.
+  await firebaseSignOut();
+
+  if (googleSignOut == null) return;
+  unawaited(_finishGoogleSignOut(googleSignOut));
+}
+
+Future<void> _finishGoogleSignOut(Future<void> Function() googleSignOut) async {
+  try {
+    await googleSignOut().timeout(const Duration(seconds: 3));
+  } catch (error) {
+    debugPrint('A Google-munkamenet lezárása sikertelen: $error');
   }
 }
 

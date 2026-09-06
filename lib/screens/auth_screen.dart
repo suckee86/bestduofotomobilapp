@@ -1,7 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../config/public_links.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/brand_logo.dart';
@@ -13,9 +15,38 @@ class AuthScreen extends StatefulWidget {
   State<AuthScreen> createState() => _AuthScreenState();
 }
 
-class _AuthScreenState extends State<AuthScreen> {
+class _AuthScreenState extends State<AuthScreen>
+    with SingleTickerProviderStateMixin {
   bool _loading = false;
   String? _error;
+  late final AnimationController _entranceController;
+  bool _motionPreferenceApplied = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _entranceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1250),
+    )..forward();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_motionPreferenceApplied) return;
+    _motionPreferenceApplied = true;
+
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _entranceController.value = 1;
+    }
+  }
+
+  @override
+  void dispose() {
+    _entranceController.dispose();
+    super.dispose();
+  }
 
   Future<void> _authenticate(Future<void> Function() action) async {
     if (_loading) return;
@@ -35,8 +66,6 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
     return Scaffold(
       backgroundColor: AppColors.ink,
       body: Stack(
@@ -52,8 +81,8 @@ class _AuthScreenState extends State<AuthScreen> {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0x55000000), Color(0xEE090807)],
-                stops: [0.05, 0.82],
+                colors: [Color(0x44000000), Color(0xF2090807)],
+                stops: [0, 0.88],
               ),
             ),
           ),
@@ -66,56 +95,86 @@ class _AuthScreenState extends State<AuthScreen> {
                     constraints: BoxConstraints(
                       minHeight: constraints.maxHeight - 42,
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            BrandLogo(width: 112, padding: 6),
-                            _SecureBadge(),
-                          ],
-                        ),
-                        const SizedBox(height: 72),
-                        const Text(
-                          'PRÉMIUM FOTÓKIDOLGOZÁS',
-                          style: TextStyle(
-                            color: AppColors.orange,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 11,
-                            letterSpacing: 2.2,
+                    child: IntrinsicHeight(
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 6),
+                          _AuthEntrance(
+                            animation: _entranceController,
+                            begin: 0,
+                            end: 0.38,
+                            distance: -14,
+                            initialScale: 0.9,
+                            child: const Align(
+                              alignment: Alignment.topCenter,
+                              child: BrandLogo(width: 148, padding: 7),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 14),
-                        Text(
-                          'Az emlékek kézben\nválnak igazivá.',
-                          style: textTheme.displaySmall?.copyWith(
-                            color: Colors.white,
-                            fontSize: 43,
+                          const Spacer(flex: 3),
+                          _AuthEntrance(
+                            animation: _entranceController,
+                            begin: 0.16,
+                            end: 0.68,
+                            distance: 30,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.auto_awesome_rounded,
+                                  color: AppColors.orange,
+                                  size: 24,
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Üdvözlünk!',
+                                  textAlign: TextAlign.center,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .displaySmall
+                                      ?.copyWith(
+                                        color: Colors.white,
+                                        fontSize: 46,
+                                        letterSpacing: -2.2,
+                                      ),
+                                ),
+                                const SizedBox(height: 16),
+                                Container(
+                                  width: 46,
+                                  height: 4,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.orange,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 18),
-                        Text(
-                          'Fotókidolgozás egyszerűen, gyorsan és gondosan — közvetlenül a telefonodról.',
-                          style: textTheme.bodyLarge?.copyWith(
-                            color: Colors.white70,
+                          const Spacer(flex: 4),
+                          _AuthEntrance(
+                            animation: _entranceController,
+                            begin: 0.48,
+                            end: 1,
+                            distance: 34,
+                            initialScale: 0.92,
+                            curve: Curves.easeOutBack,
+                            child: _LoginActions(
+                              loading: _loading,
+                              error: _error,
+                              onGoogle: () => _authenticate(
+                                () async =>
+                                    AuthService.instance.signInWithGoogle(),
+                              ),
+                              onApple: Platform.isIOS
+                                  ? () => _authenticate(
+                                      () async => AuthService.instance
+                                          .signInWithApple(),
+                                    )
+                                  : null,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 42),
-                        _LoginCard(
-                          loading: _loading,
-                          error: _error,
-                          onGoogle: () => _authenticate(
-                            () async => AuthService.instance.signInWithGoogle(),
-                          ),
-                          onApple: Platform.isIOS
-                              ? () => _authenticate(
-                                  () async =>
-                                      AuthService.instance.signInWithApple(),
-                                )
-                              : null,
-                        ),
-                      ],
+                          const SizedBox(height: 8),
+                        ],
+                      ),
                     ),
                   ),
                 );
@@ -128,38 +187,54 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 }
 
-class _SecureBadge extends StatelessWidget {
-  const _SecureBadge();
+class _AuthEntrance extends StatelessWidget {
+  const _AuthEntrance({
+    required this.animation,
+    required this.begin,
+    required this.end,
+    required this.child,
+    this.distance = 24,
+    this.initialScale = 1,
+    this.curve = Curves.easeOutCubic,
+  });
+
+  final Animation<double> animation;
+  final double begin;
+  final double end;
+  final double distance;
+  final double initialScale;
+  final Curve curve;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.black45,
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: Colors.white24),
-      ),
-      child: const Row(
-        children: [
-          Icon(Icons.circle, size: 8, color: AppColors.success),
-          SizedBox(width: 7),
-          Text(
-            'Biztonságos belépés',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
+    return AnimatedBuilder(
+      animation: animation,
+      child: child,
+      builder: (context, child) {
+        final progress = ((animation.value - begin) / (end - begin)).clamp(
+          0.0,
+          1.0,
+        );
+        final curvedProgress = curve.transform(progress);
+
+        return Opacity(
+          opacity: progress,
+          child: Transform.translate(
+            offset: Offset(0, distance * (1 - curvedProgress)),
+            child: Transform.scale(
+              scale: initialScale + ((1 - initialScale) * curvedProgress),
+              child: child,
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
 
-class _LoginCard extends StatelessWidget {
-  const _LoginCard({
+class _LoginActions extends StatelessWidget {
+  const _LoginActions({
     required this.loading,
     required this.error,
     required this.onGoogle,
@@ -173,37 +248,17 @@ class _LoginCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: double.infinity,
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.96),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white70),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x66000000),
-            blurRadius: 36,
-            offset: Offset(0, 18),
-          ),
-        ],
-      ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text('Üdvözlünk!', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 5),
-          const Text(
-            'Jelentkezz be, és máris indulhat a rendelés.',
-            style: TextStyle(color: AppColors.muted, fontSize: 13),
-          ),
           if (error != null) ...[
-            const SizedBox(height: 14),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFEFEB),
+                color: const Color(0xFFFFEFEB).withValues(alpha: 0.96),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
@@ -215,17 +270,21 @@ class _LoginCard extends StatelessWidget {
                 ),
               ),
             ),
+            const SizedBox(height: 12),
           ],
-          const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
-            child: OutlinedButton.icon(
+            child: FilledButton.icon(
               onPressed: loading ? null : onGoogle,
               icon: const _GoogleMark(),
-              label: const Text('Folytatás Google-fiókkal'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.ink,
+              label: const Text('Belépés Google-fiókkal'),
+              style: FilledButton.styleFrom(
+                foregroundColor: const Color(0xFF1F1F1F),
                 backgroundColor: Colors.white,
+                disabledBackgroundColor: Colors.white70,
+                minimumSize: const Size.fromHeight(58),
+                elevation: 0,
+                side: const BorderSide(color: Color(0xFF747775)),
               ),
             ),
           ),
@@ -236,8 +295,12 @@ class _LoginCard extends StatelessWidget {
               child: FilledButton.icon(
                 onPressed: loading ? null : onApple,
                 icon: const Icon(Icons.apple_rounded, size: 24),
-                label: const Text('Folytatás Apple-fiókkal'),
-                style: FilledButton.styleFrom(backgroundColor: Colors.black),
+                label: const Text('Belépés Apple-fiókkal'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.black,
+                  minimumSize: const Size.fromHeight(58),
+                  side: const BorderSide(color: Colors.white38),
+                ),
               ),
             ),
           ],
@@ -248,11 +311,20 @@ class _LoginCard extends StatelessWidget {
               borderRadius: BorderRadius.all(Radius.circular(3)),
             ),
           ],
-          const SizedBox(height: 15),
-          const Text(
-            'A belépési adatokat a Google, az Apple és a Firebase kezeli; jelszót nem tárolunk.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.muted, fontSize: 10, height: 1.4),
+          const SizedBox(height: 8),
+          TextButton.icon(
+            onPressed: loading
+                ? null
+                : () => launchUrl(
+                    privacyPolicyUri,
+                    mode: LaunchMode.externalApplication,
+                  ),
+            icon: const Icon(Icons.privacy_tip_outlined, size: 17),
+            label: const Text('Adatkezelési tájékoztató'),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.white70,
+              textStyle: const TextStyle(fontSize: 12),
+            ),
           ),
         ],
       ),
@@ -265,22 +337,12 @@ class _GoogleMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 23,
-      height: 23,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: const Color(0xFF4285F4),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: const Text(
-        'G',
-        style: TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w900,
-          fontSize: 14,
-        ),
-      ),
+    return Image.asset(
+      'assets/images/google_g_logo.png',
+      width: 20,
+      height: 20,
+      fit: BoxFit.contain,
+      semanticLabel: 'Google',
     );
   }
 }

@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../config/admin_access.dart';
+import '../config/public_links.dart';
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
@@ -169,9 +171,31 @@ class _ProfileSheetState extends State<_ProfileSheet> {
   Future<void> _signOut() async {
     if (_busy) return;
     setState(() => _busy = true);
-    Navigator.of(context).pop();
-    await NotificationService.instance.unregisterCurrentDevice();
-    await AuthService.instance.signOut();
+    final notificationCleanup = NotificationService.instance
+        .unregisterCurrentDevice();
+
+    try {
+      await AuthService.instance.signOut();
+      if (mounted) Navigator.of(context).pop();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('A kijelentkezés most nem sikerült. Próbáld újra.'),
+        ),
+      );
+    }
+
+    unawaited(_finishNotificationCleanup(notificationCleanup));
+  }
+
+  Future<void> _finishNotificationCleanup(Future<void> cleanup) async {
+    try {
+      await cleanup.timeout(const Duration(seconds: 3));
+    } catch (error) {
+      debugPrint('A push token háttérbeli törlése sikertelen: $error');
+    }
   }
 
   Future<void> _deleteAccount() async {
@@ -266,8 +290,13 @@ class _ProfileSheetState extends State<_ProfileSheet> {
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: _busy ? null : _signOut,
-              icon: const Icon(Icons.logout_rounded),
-              label: const Text('Kijelentkezés'),
+              icon: _busy
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.logout_rounded),
+              label: Text(_busy ? 'Kijelentkezés…' : 'Kijelentkezés'),
             ),
           ),
           const SizedBox(height: 8),
@@ -276,6 +305,18 @@ class _ProfileSheetState extends State<_ProfileSheet> {
             icon: const Icon(Icons.delete_outline_rounded),
             label: const Text('Fiók végleges törlése'),
             style: TextButton.styleFrom(foregroundColor: Colors.red.shade700),
+          ),
+          TextButton.icon(
+            onPressed: _busy
+                ? null
+                : () => unawaited(
+                    launchUrl(
+                      privacyPolicyUri,
+                      mode: LaunchMode.externalApplication,
+                    ),
+                  ),
+            icon: const Icon(Icons.privacy_tip_outlined),
+            label: const Text('Adatkezelési tájékoztató'),
           ),
           if (_busy) ...[
             const SizedBox(height: 8),

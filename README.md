@@ -67,6 +67,13 @@ Felvétel:
 4. Authentication → Sign-in method alatt engedélyezd a Google providert.
 5. Töltsd le újra a `google-services.json` fájlt, és cseréld le vele a gyökérben, valamint az `android/app/` mappában lévő példányt.
 
+Az elkészült `upload` kulcs ujjlenyomatai, amelyeket most fel lehet venni:
+
+```text
+SHA-1:   29:10:E1:78:60:6E:EA:F2:51:BC:10:A8:0F:D9:3A:BF:FC:63:EB:82
+SHA-256: 40:7B:C4:9B:3E:55:42:6C:4D:61:0A:C1:21:C0:DC:7E:33:43:EF:8F:B1:39:48:72:A3:07:A9:09:69:29:C2:F4
+```
+
 Újragenerálás bármikor:
 
 ```powershell
@@ -77,10 +84,12 @@ $env:JAVA_HOME = 'C:\Program Files\Java\jdk-21'
 
 A már Cloud Console-ban lévő SHA-1 a Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client IDs részben, az Android kliens megnyitásakor látható. A Firebase Console Project settings oldalán az apphoz felvett ujjlenyomatok szintén visszanézhetők. Ha ugyanaz a csomagnév + SHA-1 egy másik projekt Android OAuth kliensén szerepel, azt a régi projektben el kell távolítani vagy másik kiadási kulcsot kell használni; ugyanaz a páros nem tartozhat két projekthez.
 
-Kiadáskor még két ujjlenyomatot kell felvenni:
+Kiadáskor két tanúsítvány ujjlenyomatait kell kezelni:
 
-- a saját upload/release keystore SHA-1 és SHA-256 értékeit;
-- publikálás után a Google Play Console → Release → Setup → App signing oldalon látható App signing key SHA-1 és SHA-256 értékeit.
+- a saját upload keystore fenti SHA-1 és SHA-256 értékeit;
+- az első Play-feltöltés után a Google Play Console → Protected with Play → Play Store distribution → Play app signing oldalon látható **App signing key certificate** SHA-1 és SHA-256 értékeit.
+
+Az OAuth nyilvános megjelenését ugyanennek a Firebase-projektnek a Google Cloud Console felületén kell beállítani: Google Auth Platform → Branding. Az alkalmazás neve `Best Duo Fotó`, a támogatási e-mail `foto@bestduo.hu`, a kezdőlap `https://bestduo.hu/`, az adatkezelési URL `https://bestduo.hu/adatkezeles/`, az engedélyezett domain pedig `bestduo.hu`. Az Audience oldalon külső, éles használatra kell publikálni. Az app csak az alap profil- és e-mail-adatokat kéri, ezért érzékeny vagy korlátozott scope nincs használatban; a márkanév és logó nyilvános megjelenítéséhez brand verification szükséges lehet.
 
 ### 2. Apple-belépés
 
@@ -139,7 +148,7 @@ Ha kész a tartalom, állítsd az `isPublished` mezőt `true` értékre. A Funct
 
 ## Android release aláírás
 
-A release build szándékosan nincs debug kulccsal aláírva. Hozz létre külön upload keystore-t, másold az `android/key.properties.example` fájlt `android/key.properties` néven, majd töltsd ki. A valódi keystore és `key.properties` gitignore-olt; ezeket biztonságos, mentett helyen kell tartani.
+Az `upload` kulcs létrejött az `android/upload-keystore.jks` fájlban, a hozzá tartozó helyi buildbeállítás és véletlenszerű jelszavak pedig az `android/key.properties` fájlban vannak. Mindkettő gitignore-olt. A két fájlról együtt kell biztonságos, titkosított külső mentést készíteni; a repó másolása vagy újraklónozása ezeket nem őrzi meg.
 
 Ezután:
 
@@ -157,7 +166,9 @@ flutter build appbundle --release
 
 ## Publikálás előtt
 
-- végleges adatkezelési tájékoztató és publikus URL szükséges a belépési képernyőhöz és az áruházi adatlapokhoz;
-- létre kell hozni az Android upload kulcsot és az iOS provisioning profile-okat;
+- a `play-store-pages/` tartalmát fel kell tölteni a szerverre, ellenőrizni kell a pontos hivatalos adatkezelői nevet, és a főoldalról is hivatkozni kell az adatkezelési tájékoztatóra;
+- az Android upload kulcsról biztonságos külső mentést, iOS-hez pedig provisioning profile-okat kell készíteni;
 - valós eszközön végig kell próbálni a Google/Apple belépést, a fotófeltöltést és a push-t;
 - az App Store/Play Store képernyőképek, leírások és adatbiztonsági nyilatkozatok még elkészítendők.
+
+A Google-belépési gomb színes `G` emblémája a Google hivatalos Sign in with Google arculati eszközeiből származik: `assets/images/google_g_logo.png`.

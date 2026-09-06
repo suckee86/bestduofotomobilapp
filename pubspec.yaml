@@ -58,6 +58,21 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.4
+  flutter_native_splash: ^2.4.7
+
+flutter_native_splash:
+  color: "#FFFFFF"
+  color_dark: "#FFFFFF"
+  image: assets/images/bestduo_logo.png
+  image_dark: assets/images/bestduo_logo.png
+  android_gravity: center
+  ios_content_mode: center
+  web: false
+  android_12:
+    color: "#FFFFFF"
+    color_dark: "#FFFFFF"
+    image: assets/images/bestduo_splash_android12.png
+    image_dark: assets/images/bestduo_splash_android12.png
 
 flutter_launcher_icons:
   android: true
@@ -82,6 +97,7 @@ flutter:
 
   assets:
     - assets/images/bestduo_logo.png
+    - assets/images/google_g_logo.png
     - assets/images/photo_lab_background.png
 
   fonts:
