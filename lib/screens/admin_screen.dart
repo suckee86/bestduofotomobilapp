@@ -1,10 +1,6 @@
-import 'dart:typed_data';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../config/admin_access.dart';
 import '../models/announcement.dart';
@@ -174,7 +170,6 @@ class _AnnouncementsAdminTab extends StatelessWidget {
           .collection('announcements')
           .doc(announcement.id)
           .delete();
-      await _deleteStorageFile(announcement.imagePath);
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
@@ -376,9 +371,6 @@ class _AnnouncementEditorScreenState extends State<_AnnouncementEditorScreen> {
   late final TextEditingController _titleController;
   late final TextEditingController _bodyController;
   late final TextEditingController _targetUrlController;
-  XFile? _pickedImage;
-  Uint8List? _pickedImageBytes;
-  bool _removeImage = false;
   bool _busy = false;
 
   @override
@@ -398,50 +390,13 @@ class _AnnouncementEditorScreenState extends State<_AnnouncementEditorScreen> {
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
-    final picked = await ImagePicker().pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1800,
-      imageQuality: 88,
-    );
-    if (picked == null) return;
-    if (await picked.length() > 10 * 1024 * 1024) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('A kép legfeljebb 10 MB lehet.')),
-        );
-      }
-      return;
-    }
-    final bytes = await picked.readAsBytes();
-    if (!mounted) return;
-    setState(() {
-      _pickedImage = picked;
-      _pickedImageBytes = bytes;
-      _removeImage = false;
-    });
-  }
-
-  void _clearImage() {
-    setState(() {
-      _pickedImage = null;
-      _pickedImageBytes = null;
-      _removeImage = true;
-    });
-  }
-
   Future<bool> _confirmPublishing() async {
-    final item = widget.announcement;
-    if (item?.isPublished == true) return true;
+    if (widget.announcement?.isPublished == true) return true;
     return await showDialog<bool>(
           context: context,
           builder: (dialogContext) => AlertDialog(
             title: const Text('Közzéteszed a hírt?'),
-            content: Text(
-              item?.notificationWasSent == true
-                  ? 'A hír újra megjelenik, de új push értesítés már nem megy ki.'
-                  : 'A hír megjelenik az alkalmazásban, és a rendszer push értesítést küld a felhasználóknak.',
-            ),
+            content: const Text('A hír megjelenik az alkalmazásban.'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext, false),
@@ -467,27 +422,8 @@ class _AnnouncementEditorScreenState extends State<_AnnouncementEditorScreen> {
     final reference = widget.announcement == null
         ? collection.doc()
         : collection.doc(widget.announcement!.id);
-    String? uploadedPath;
 
     try {
-      String? imageUrl = widget.announcement?.imageUrl;
-      String? imagePath = widget.announcement?.imagePath;
-      if (_pickedImage != null && _pickedImageBytes != null) {
-        final extension = _safeExtension(_pickedImage!.name);
-        uploadedPath =
-            'announcements/${reference.id}/cover-${DateTime.now().millisecondsSinceEpoch}.$extension';
-        final storageReference = FirebaseStorage.instance.ref(uploadedPath);
-        await storageReference.putData(
-          _pickedImageBytes!,
-          SettableMetadata(contentType: _contentType(extension)),
-        );
-        imageUrl = await storageReference.getDownloadURL();
-        imagePath = uploadedPath;
-      } else if (_removeImage) {
-        imageUrl = null;
-        imagePath = null;
-      }
-
       final targetUrl = _targetUrlController.text.trim();
       final data = <String, dynamic>{
         'title': _titleController.text.trim(),
@@ -495,8 +431,6 @@ class _AnnouncementEditorScreenState extends State<_AnnouncementEditorScreen> {
         'isPublished': publish,
         'updatedAt': FieldValue.serverTimestamp(),
         'targetUrl': targetUrl.isEmpty ? FieldValue.delete() : targetUrl,
-        'imageUrl': imageUrl ?? FieldValue.delete(),
-        'imagePath': imagePath ?? FieldValue.delete(),
       };
       if (widget.announcement == null) {
         data['createdAt'] = FieldValue.serverTimestamp();
@@ -504,13 +438,6 @@ class _AnnouncementEditorScreenState extends State<_AnnouncementEditorScreen> {
       }
 
       await reference.set(data, SetOptions(merge: true));
-
-      final previousPath = widget.announcement?.imagePath;
-      if (previousPath != null &&
-          previousPath.isNotEmpty &&
-          previousPath != imagePath) {
-        await _deleteStorageFile(previousPath);
-      }
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -522,10 +449,6 @@ class _AnnouncementEditorScreenState extends State<_AnnouncementEditorScreen> {
       );
       Navigator.of(context).pop();
     } catch (error) {
-      if (uploadedPath != null &&
-          uploadedPath != widget.announcement?.imagePath) {
-        await _deleteStorageFile(uploadedPath);
-      }
       if (mounted) {
         setState(() => _busy = false);
         _showError(context, error);
@@ -535,10 +458,6 @@ class _AnnouncementEditorScreenState extends State<_AnnouncementEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final existingImage = widget.announcement?.imageUrl;
-    final hasImage =
-        _pickedImageBytes != null ||
-        (!_removeImage && existingImage != null && existingImage.isNotEmpty);
     final isPublished = widget.announcement?.isPublished ?? false;
 
     return Scaffold(
@@ -592,40 +511,6 @@ class _AnnouncementEditorScreenState extends State<_AnnouncementEditorScreen> {
               ),
               validator: _optionalWebAddress,
             ),
-            const SizedBox(height: 18),
-            Text('Borítókép', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 9),
-            if (hasImage) ...[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(18),
-                child: AspectRatio(
-                  aspectRatio: 2,
-                  child: _pickedImageBytes != null
-                      ? Image.memory(_pickedImageBytes!, fit: BoxFit.cover)
-                      : Image.network(existingImage!, fit: BoxFit.cover),
-                ),
-              ),
-              const SizedBox(height: 8),
-            ],
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _busy ? null : _pickImage,
-                    icon: const Icon(Icons.photo_library_outlined),
-                    label: Text(hasImage ? 'Kép cseréje' : 'Kép kiválasztása'),
-                  ),
-                ),
-                if (hasImage) ...[
-                  const SizedBox(width: 8),
-                  IconButton.filledTonal(
-                    onPressed: _busy ? null : _clearImage,
-                    tooltip: 'Kép eltávolítása',
-                    icon: const Icon(Icons.delete_outline_rounded),
-                  ),
-                ],
-              ],
-            ),
             const SizedBox(height: 22),
             if (_busy) const LinearProgressIndicator(),
             if (_busy) const SizedBox(height: 12),
@@ -635,7 +520,7 @@ class _AnnouncementEditorScreenState extends State<_AnnouncementEditorScreen> {
                 child: FilledButton.icon(
                   onPressed: _busy ? null : () => _save(publish: true),
                   icon: const Icon(Icons.campaign_rounded),
-                  label: const Text('Közzététel és értesítés'),
+                  label: const Text('Közzététel'),
                 ),
               ),
               const SizedBox(height: 8),
@@ -1089,34 +974,6 @@ String? _coordinateValue(String? value, double minimum, double maximum) {
   return number != null && number >= minimum && number <= maximum
       ? null
       : 'Hibás érték';
-}
-
-String _safeExtension(String fileName) {
-  final extension = fileName.contains('.')
-      ? fileName.split('.').last.toLowerCase()
-      : 'jpg';
-  return {'jpg', 'jpeg', 'png', 'webp', 'heic'}.contains(extension)
-      ? extension
-      : 'jpg';
-}
-
-String _contentType(String extension) {
-  return switch (extension) {
-    'png' => 'image/png',
-    'webp' => 'image/webp',
-    'heic' => 'image/heic',
-    _ => 'image/jpeg',
-  };
-}
-
-Future<void> _deleteStorageFile(String? path) async {
-  if (path == null || path.isEmpty) return;
-  try {
-    await FirebaseStorage.instance.ref(path).delete();
-  } on FirebaseException {
-    // A tartalom mentése/törlése maradjon sikeres akkor is, ha egy régi kép
-    // háttértárból való takarítása átmenetileg nem sikerül.
-  }
 }
 
 void _showError(BuildContext context, Object error) {

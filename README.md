@@ -100,36 +100,41 @@ Az OAuth nyilvános megjelenését ugyanennek a Firebase-projektnek a Google Clo
 
 Az Apple-belépés csak iOS-en jelenik meg az alkalmazásban. A Google-belépéshez szükséges iOS URL scheme már az `Info.plist` része.
 
-### 3. Firestore és push backend
+### 3. Firestore és opcionális push backend
 
 1. A Firebase Console-ban hozz létre Cloud Firestore adatbázist Native módban.
 2. A Cloud Messaging fülön az iOS apphoz tölts fel APNs `.p8` kulcsot, valamint add meg a Key ID-t és Team ID-t.
-3. A Cloud Functions telepítéséhez a projektet Blaze csomagra kell állítani.
-4. Telepítsd és deployold a backendet:
+3. A Firestore szabályai és indexei a Spark csomagban is telepíthetők:
+
+```powershell
+npx firebase-tools login
+npx firebase-tools use bestduomobilapp
+npx firebase-tools deploy --only firestore:rules,firestore:indexes
+```
+
+Az automatikus push értesítést küldő Cloud Function opcionális, és csak Blaze csomagban telepíthető. Spark csomagban a publikált hír megjelenik az alkalmazásban, de a közzététel nem küld automatikus push értesítést. Ha később mégis szükség van rá:
 
 ```powershell
 cd functions
 npm install
 cd ..
-npx firebase-tools login
-npx firebase-tools use bestduomobilapp
-npx firebase-tools deploy --only firestore:rules,firestore:indexes,storage,functions
+npx firebase-tools deploy --only functions
 ```
 
-Az app a bejelentkezett felhasználót a `users`, az FCM tokeneket a `pushTokens`, a híreket az `announcements`, a szerkeszthető kapcsolati adatokat az `appConfig/contact` dokumentumban kezeli. A hírekhez feltöltött képek a Firebase Storage `announcements` mappájába kerülnek.
+Az app a bejelentkezett felhasználót a `users`, az FCM tokeneket a `pushTokens`, a híreket az `announcements`, a szerkeszthető kapcsolati adatokat az `appConfig/contact` dokumentumban kezeli.
 
-### Adminfelület és push/hír küldése
+### Adminfelület és hírkezelés
 
 A `bestduo.firebase@gmail.com` ellenőrzött Google-fiókkal belépő felhasználónak egy ötödik, **Kezelés** nevű menüpont jelenik meg. Innen:
 
-- új hír és borítókép tölthető fel;
+- új, szöveges hír hozható létre, opcionális webes részletező linkkel;
 - piszkozat menthető, majd külön megerősítéssel publikálható;
 - a meglévő hírek szerkeszthetők, elrejthetők és törölhetők;
 - szerkeszthető az üzlet címe, telefonszáma, e-mail-címe, nyitvatartása, Facebook-linkje és térképpontja.
 
-A jogosultságot a kliens mellett a Firestore és Storage szabályai is ellenőrzik. Az admin e-mail-cím módosításakor a `lib/config/admin_access.dart`, a `firestore.rules` és a `storage.rules` fájlt együtt kell frissíteni.
+A jogosultságot a kliens mellett a Firestore szabályai is ellenőrzik. Az admin e-mail-cím módosításakor a `lib/config/admin_access.dart` és a `firestore.rules` fájlt együtt kell frissíteni.
 
-A publikálás egyszer küld push értesítést. Egy már kiküldött, majd elrejtett hír újbóli megjelenítése nem küld új push-t; új értesítéshez új hírt kell létrehozni.
+Ha az opcionális Cloud Function telepítve van, a publikálás egyszer küld push értesítést. Egy már kiküldött, majd elrejtett hír újbóli megjelenítése nem küld új push-t; új értesítéshez új hírt kell létrehozni.
 
 Szükség esetén a Firebase Console-ból is létrehozható dokumentum az `announcements` kollekcióban:
 
@@ -141,10 +146,9 @@ A Firestore Console-ban hozz létre egy dokumentumot az `announcements` kollekci
 | `body` | string | igen | `Ezen a héten kedvezményes a 10×15-ös kép.` |
 | `publishedAt` | timestamp | igen | aktuális dátum/idő |
 | `isPublished` | boolean | igen | először `false` |
-| `imageUrl` | string | nem | HTTPS képcím |
 | `targetUrl` | string | nem | HTTPS részletező oldal |
 
-Ha kész a tartalom, állítsd az `isPublished` mezőt `true` értékre. A Function ekkor egyszer kiküldi a push-t, majd kitölti a `notificationState`, `notificationSentAt` és `deliverySummary` mezőket.
+Ha kész a tartalom, állítsd az `isPublished` mezőt `true` értékre. Az opcionális Function ekkor egyszer kiküldi a push-t, majd kitölti a `notificationState`, `notificationSentAt` és `deliverySummary` mezőket.
 
 ## Android release aláírás
 
@@ -162,7 +166,7 @@ flutter build appbundle --release
 - `lib/services/` – Firebase Auth és FCM/Firestore tokenkezelés
 - `assets/` – eredeti Best Duo képi világ és a Manrope font
 - `functions/` – hírből push-t küldő, hibás tokeneket takarító backend
-- `firestore.rules` – felhasználói és tokenadatok hozzáférési szabályai
+- `firestore.rules` – felhasználói, token- és hír-adatok hozzáférési szabályai
 
 ## Publikálás előtt
 

@@ -115,7 +115,6 @@ class _NewsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasImage = item.imageUrl?.trim().isNotEmpty ?? false;
     final hasLink = item.targetUrl?.trim().isNotEmpty ?? false;
 
     return Card(
@@ -125,23 +124,6 @@ class _NewsCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (hasImage)
-              AspectRatio(
-                aspectRatio: 2,
-                child: Image.network(
-                  item.imageUrl!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => const ColoredBox(
-                    color: AppColors.ink,
-                    child: Center(
-                      child: Icon(
-                        Icons.image_not_supported_outlined,
-                        color: Colors.white54,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
             Padding(
               padding: const EdgeInsets.all(20),
               child: Column(

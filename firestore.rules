@@ -26,11 +26,7 @@ service cloud.firestore {
         && data.publishedAt is timestamp
         && data.isPublished is bool
         && (!('targetUrl' in data)
-          || (data.targetUrl is string && data.targetUrl.size() <= 2000))
-        && (!('imageUrl' in data)
-          || (data.imageUrl is string && data.imageUrl.size() <= 2000))
-        && (!('imagePath' in data)
-          || (data.imagePath is string && data.imagePath.size() <= 500));
+          || (data.targetUrl is string && data.targetUrl.size() <= 2000));
     }
 
     function validContact(data) {
@@ -67,14 +63,14 @@ service cloud.firestore {
         || (signedIn() && resource.data.isPublished == true);
       allow create: if isContentAdmin()
         && request.resource.data.keys().hasOnly([
-          'title', 'body', 'publishedAt', 'isPublished', 'imageUrl',
-          'imagePath', 'targetUrl', 'createdAt', 'updatedAt'
+          'title', 'body', 'publishedAt', 'isPublished', 'targetUrl',
+          'createdAt', 'updatedAt'
         ])
         && validAnnouncement(request.resource.data);
       allow update: if isContentAdmin()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'title', 'body', 'publishedAt', 'isPublished', 'imageUrl',
-          'imagePath', 'targetUrl', 'updatedAt'
+          'title', 'body', 'publishedAt', 'isPublished', 'targetUrl',
+          'updatedAt'
         ])
         && validAnnouncement(request.resource.data);
       allow delete: if isContentAdmin();

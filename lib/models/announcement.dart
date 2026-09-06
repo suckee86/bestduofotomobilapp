@@ -8,8 +8,6 @@ class Announcement {
     required this.publishedAt,
     required this.isPublished,
     required this.notificationWasSent,
-    this.imageUrl,
-    this.imagePath,
     this.targetUrl,
   });
 
@@ -24,8 +22,6 @@ class Announcement {
       publishedAt: (data['publishedAt'] as Timestamp?)?.toDate(),
       isPublished: data['isPublished'] as bool? ?? false,
       notificationWasSent: data['notificationSentAt'] is Timestamp,
-      imageUrl: data['imageUrl'] as String?,
-      imagePath: data['imagePath'] as String?,
       targetUrl: data['targetUrl'] as String?,
     );
   }
@@ -36,7 +32,5 @@ class Announcement {
   final DateTime? publishedAt;
   final bool isPublished;
   final bool notificationWasSent;
-  final String? imageUrl;
-  final String? imagePath;
   final String? targetUrl;
 }
