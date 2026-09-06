@@ -170,9 +170,7 @@ flutter build appbundle --release
 
 ## Publikálás előtt
 
-- a `play-store-pages/` tartalmát fel kell tölteni a szerverre, ellenőrizni kell a pontos hivatalos adatkezelői nevet, és a főoldalról is hivatkozni kell az adatkezelési tájékoztatóra;
-- az Android upload kulcsról biztonságos külső mentést, iOS-hez pedig provisioning profile-okat kell készíteni;
-- valós eszközön végig kell próbálni a Google/Apple belépést, a fotófeltöltést és a push-t;
-- az App Store/Play Store képernyőképek, leírások és adatbiztonsági nyilatkozatok még elkészítendők.
+- az App Store-képernyőképek az `assets/app_store_screenshots/` mappában találhatók 1284×2778 px felbontásban; újragenerálásuk: `powershell -ExecutionPolicy Bypass -File .\tooling\generate_app_store_screenshots.ps1`;
+- a store-leírások és az adatbiztonsági nyilatkozatok feltöltés előtt még ellenőrizendők.
 
 A Google-belépési gomb színes `G` emblémája a Google hivatalos Sign in with Google arculati eszközeiből származik: `assets/images/google_g_logo.png`.
