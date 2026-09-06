@@ -223,8 +223,10 @@ class _ProfileSheetState extends State<_ProfileSheet> {
     if (confirmed != true || !mounted) return;
 
     setState(() => _busy = true);
-    await NotificationService.instance.unregisterCurrentDevice();
     try {
+      await NotificationService.instance.unregisterAllDevicesForUser(
+        widget.user,
+      );
       await AuthService.instance.deleteAccount();
       if (mounted) Navigator.of(context).pop();
     } catch (error) {

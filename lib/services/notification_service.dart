@@ -106,6 +106,34 @@ class NotificationService {
     }
   }
 
+  Future<void> unregisterAllDevicesForUser(User user) async {
+    await _tokenSubscription?.cancel();
+    _tokenSubscription = null;
+
+    final tokens = FirebaseFirestore.instance.collection('pushTokens');
+    while (true) {
+      final snapshot = await tokens
+          .where('userId', isEqualTo: user.uid)
+          .limit(400)
+          .get();
+      if (snapshot.docs.isEmpty) break;
+
+      final batch = FirebaseFirestore.instance.batch();
+      for (final document in snapshot.docs) {
+        batch.delete(document.reference);
+      }
+      await batch.commit();
+    }
+
+    try {
+      await _messaging.deleteToken();
+    } catch (error) {
+      debugPrint('A helyi push token törlése sikertelen: $error');
+    } finally {
+      _currentToken = null;
+    }
+  }
+
   Future<void> _saveToken(String token, String userId) async {
     try {
       await FirebaseFirestore.instance
